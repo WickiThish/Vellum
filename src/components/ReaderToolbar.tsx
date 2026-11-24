@@ -208,8 +208,8 @@ export function ReaderToolbar({
           type="button"
           className="icon-btn"
           onClick={onToggleFocus}
-          title="Focus Mode (Shortcut: F)"
-          aria-label="Enter focus mode"
+          title="Full Screen Reading (Shortcut: F)"
+          aria-label="Enter full screen mode"
         >
           <Maximize2 size={16} />
         </button>

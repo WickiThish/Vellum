@@ -34,6 +34,11 @@ body {
   transition: background-color 220ms ease, color 220ms ease;
 }
 
+:fullscreen,
+:fullscreen::backdrop {
+  background-color: var(--desk);
+}
+
 ::selection {
   background-color: var(--accent);
   color: var(--accent-ink);
@@ -265,6 +270,126 @@ body {
   background-color: rgba(158, 42, 43, 0.1);
   padding: 0.45rem 0.8rem;
   border-radius: 8px;
+}
+
+/* Library Shelf */
+
+.library-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+
+.library-card {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.55rem 0.6rem 0.55rem 0.75rem;
+  border-radius: 14px;
+  background-color: var(--surface);
+  border: 1.5px solid var(--border);
+  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.library-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(20, 12, 6, 0.1);
+}
+
+.library-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: none;
+  background: transparent;
+  padding: 0.2rem 0;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.library-card-main:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.library-spine {
+  width: 42px;
+  height: 54px;
+  border-radius: 7px;
+  border: 1.5px solid;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(15, 10, 5, 0.1);
+}
+
+.library-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.library-card-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.library-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.library-progress-track {
+  height: 5px;
+  border-radius: 99px;
+  background-color: var(--desk);
+  overflow: hidden;
+  margin-top: 0.1rem;
+}
+
+.library-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background-color: var(--accent);
+}
+
+.library-delete-btn {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.library-delete-btn:hover {
+  color: #9e2a2b;
 }
 
 /* Preset Showcase */

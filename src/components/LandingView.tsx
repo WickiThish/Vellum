@@ -1,20 +1,39 @@
 import { useRef, useState } from 'react';
-import { BookOpen, FileUp, ShieldCheck, Sparkles } from 'lucide-react';
-import { PRESET_LIST, type PresetId } from '../lib/presets';
+import { BookOpen, Clock, FileUp, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import type { LibraryBookMeta } from '../lib/libraryDb';
+import { PAPER_PRESETS, PRESET_LIST, type PresetId } from '../lib/presets';
 
 interface LandingViewProps {
   activePreset: PresetId;
+  libraryBooks: LibraryBookMeta[];
   onSelectPreset: (id: PresetId) => void;
   onFileSelected: (file: File) => void;
+  onOpenLibraryBook: (bookId: string) => void;
+  onRemoveLibraryBook: (bookId: string) => void;
   onOpenSample: () => void;
   isLoading: boolean;
   error: string | null;
 }
 
+function formatRelativeTime(timestamp: number): string {
+  const diffSec = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDay = Math.floor(diffHr / 24);
+  if (diffDay === 1) return 'Yesterday';
+  return `${diffDay}d ago`;
+}
+
 export function LandingView({
   activePreset,
+  libraryBooks,
   onSelectPreset,
   onFileSelected,
+  onOpenLibraryBook,
+  onRemoveLibraryBook,
   onOpenSample,
   isLoading,
   error,
@@ -110,6 +129,85 @@ export function LandingView({
             </p>
           )}
         </section>
+
+        {libraryBooks.length > 0 && (
+          <section className="library-section" aria-labelledby="library-heading">
+            <div className="preset-showcase-header">
+              <h2 id="library-heading" className="section-label">
+                Your Library · Continue Reading
+              </h2>
+              <span className="section-hint">
+                Saved locally in this browser — resumes right where you left off
+              </span>
+            </div>
+
+            <div className="library-grid">
+              {libraryBooks.map((book) => {
+                const bookPreset = PAPER_PRESETS[book.presetId] ?? PAPER_PRESETS.kraft;
+                const displayTitle = book.name.replace(/\.pdf$/i, '');
+                const progressPct = Math.min(
+                  100,
+                  Math.max(1, Math.round((book.lastPage / Math.max(1, book.totalPages)) * 100))
+                );
+
+                return (
+                  <div key={book.id} className="library-card">
+                    <button
+                      type="button"
+                      className="library-card-main"
+                      disabled={isLoading}
+                      onClick={() => onOpenLibraryBook(book.id)}
+                    >
+                      <span
+                        className="library-spine"
+                        style={{
+                          backgroundColor: bookPreset.paperHex,
+                          borderColor: bookPreset.borderHex,
+                          color: bookPreset.inkHex,
+                        }}
+                        aria-hidden="true"
+                      >
+                        Aa
+                      </span>
+
+                      <div className="library-card-body">
+                        <div className="library-card-title" title={book.name}>
+                          {displayTitle}
+                        </div>
+                        <div className="library-card-meta">
+                          <span>
+                            Page {book.lastPage} of {book.totalPages}
+                          </span>
+                          <span aria-hidden="true">·</span>
+                          <span className="library-time">
+                            <Clock size={12} aria-hidden="true" />
+                            {formatRelativeTime(book.lastOpenedAt)}
+                          </span>
+                        </div>
+                        <div className="library-progress-track" aria-hidden="true">
+                          <div
+                            className="library-progress-fill"
+                            style={{ width: `${progressPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="icon-btn library-delete-btn"
+                      onClick={() => onRemoveLibraryBook(book.id)}
+                      title={`Remove "${displayTitle}" from library`}
+                      aria-label={`Remove ${displayTitle} from library`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="preset-showcase" aria-labelledby="presets-heading">
           <div className="preset-showcase-header">

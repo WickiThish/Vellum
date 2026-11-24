@@ -6,6 +6,7 @@ import { PAPER_PRESETS, type TransformSettings } from '../lib/presets';
 interface PdfPageCanvasProps {
   pdfDoc: PDFDocumentProxy;
   pageNumber: number;
+  initialPage?: number;
   scale: number;
   settings: TransformSettings;
   onVisible?: (pageNumber: number) => void;
@@ -14,6 +15,7 @@ interface PdfPageCanvasProps {
 export function PdfPageCanvas({
   pdfDoc,
   pageNumber,
+  initialPage = 1,
   scale,
   settings,
   onVisible,
@@ -28,7 +30,9 @@ export function PdfPageCanvas({
     data: Uint8ClampedArray;
   } | null>(null);
 
-  const [isNearViewport, setIsNearViewport] = useState(pageNumber <= 2);
+  const [isNearViewport, setIsNearViewport] = useState(
+    Math.abs(pageNumber - initialPage) <= 1
+  );
   const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
     width: Math.round(612 * scale),
     height: Math.round(792 * scale),
@@ -196,7 +200,7 @@ export function PdfPageCanvas({
   const sheetBg = settings.showOriginal ? '#ffffff' : preset.paperHex;
 
   return (
-    <figure className="vellum-page-figure" ref={containerRef}>
+    <figure className="vellum-page-figure" ref={containerRef} data-page-number={pageNumber}>
       <div
         className="vellum-page-sheet"
         style={{
