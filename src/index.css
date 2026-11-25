@@ -1,19 +1,19 @@
 :root {
-  --desk: #0f1012;
-  --surface: #17181c;
-  --paper: #1e2025;
-  --ink: #f3f4f6;
-  --muted: #9ca3af;
-  --border: #2b2e36;
-  --accent: #f3f4f6;
-  --accent-ink: #111215;
+  --desk: #090909;
+  --surface: #141414;
+  --paper: #1b1b1b;
+  --ink: #e3e3e3;
+  --muted: #9a9a9a;
+  --border: #262626;
+  --accent: #e3e3e3;
+  --accent-ink: #0f0f0f;
 
   --font-serif: 'Newsreader', 'Iowan Old Style', Georgia, 'Times New Roman', serif;
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   color-scheme: dark;
   accent-color: var(--accent);
-  scrollbar-color: #4b505c var(--desk);
+  scrollbar-color: #444444 var(--desk);
   scrollbar-width: auto;
 }
 
