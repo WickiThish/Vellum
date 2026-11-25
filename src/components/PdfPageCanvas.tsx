@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import { transformPageImageData } from '../lib/colorTransform';
+import { buildPhotoPreservationMask, detectPageImageRects } from '../lib/pdfImageMask';
 import { PAPER_PRESETS, type TransformSettings } from '../lib/presets';
 
 interface PdfPageCanvasProps {
@@ -28,6 +29,7 @@ export function PdfPageCanvas({
     width: number;
     height: number;
     data: Uint8ClampedArray;
+    photoMask: Uint8Array | null;
   } | null>(null);
 
   const [isNearViewport, setIsNearViewport] = useState(
@@ -81,7 +83,8 @@ export function PdfPageCanvas({
       const page = await pdfDoc.getPage(pageNumber);
       if (cancelled) return;
 
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // Super-sample at least 1.75x (up to 2.5x on HiDPI) so text stays crystal clear on all screens
+      const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1.75), 2.5);
       const viewport = page.getViewport({ scale });
       const hiDpiViewport = page.getViewport({ scale: scale * dpr });
 
@@ -95,7 +98,7 @@ export function PdfPageCanvas({
       const pixelW = Math.ceil(hiDpiViewport.width);
       const pixelH = Math.ceil(hiDpiViewport.height);
 
-      // Reuse cached raw pixels if scale & dpr haven't changed
+      // Reuse cached raw pixels + image mask if scale & dpr haven't changed
       const cached = rawImageCacheRef.current;
       if (
         cached &&
@@ -114,9 +117,12 @@ export function PdfPageCanvas({
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return;
 
-      // Paint pure white base so transparent PDFs map cleanly to paper tone
+      // Paint pure white base so transparent PDFs map cleanly to paper/charcoal tone
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, pixelW, pixelH);
+
+      // Detect embedded raster photos/images in parallel with rasterization
+      const imageRectsPromise = detectPageImageRects(page, hiDpiViewport, pixelW, pixelH);
 
       renderTask = page.render({
         canvas,
@@ -136,15 +142,21 @@ export function PdfPageCanvas({
       if (cancelled) return;
 
       const raw = ctx.getImageData(0, 0, pixelW, pixelH);
+      const imageRects = await imageRectsPromise;
+      if (cancelled) return;
+
+      const photoMask = buildPhotoPreservationMask(raw, imageRects);
+
       rawImageCacheRef.current = {
         scale,
         dpr,
         width: pixelW,
         height: pixelH,
         data: new Uint8ClampedArray(raw.data),
+        photoMask,
       };
 
-      const transformed = transformPageImageData(raw, settings);
+      const transformed = transformPageImageData(raw, settings, photoMask);
       ctx.putImageData(transformed, 0, 0);
       setIsRendered(true);
     }
@@ -160,7 +172,7 @@ export function PdfPageCanvas({
         cached.width,
         cached.height
       );
-      transformPageImageData(copy, settings);
+      transformPageImageData(copy, settings, cached.photoMask);
       ctx.putImageData(copy, 0, 0);
       setIsRendered(true);
     }
@@ -192,11 +204,11 @@ export function PdfPageCanvas({
       cached.width,
       cached.height
     );
-    transformPageImageData(copy, settings);
+    transformPageImageData(copy, settings, cached.photoMask);
     ctx.putImageData(copy, 0, 0);
   }, [settings, isRendered]);
 
-  const preset = PAPER_PRESETS[settings.presetId];
+  const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS.charcoal;
   const sheetBg = settings.showOriginal ? '#ffffff' : preset.paperHex;
 
   return (

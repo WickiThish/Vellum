@@ -49,7 +49,7 @@ export default function App() {
   // Avoid overwriting saved lastPage while we're scrolling to the resumed page
   const isResumingRef = useRef<boolean>(false);
 
-  const activePreset = PAPER_PRESETS[settings.presetId];
+  const activePreset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS.charcoal;
 
   const refreshLibrary = useCallback(async () => {
     const books = await listLibraryBooks();
@@ -151,10 +151,12 @@ export default function App() {
         }
 
         if (options?.presetId) {
-          const p = PAPER_PRESETS[options.presetId];
+          const validPresetId: PresetId =
+            options.presetId in PAPER_PRESETS ? options.presetId : 'charcoal';
+          const p = PAPER_PRESETS[validPresetId];
           setSettings((prev) => ({
             ...prev,
-            presetId: options.presetId!,
+            presetId: validPresetId,
             grain: p.defaultGrain,
             inkSoftness: p.defaultSoftness,
             showOriginal: false,

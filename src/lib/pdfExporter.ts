@@ -1,6 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { transformPageImageData } from './colorTransform';
+import { buildPhotoPreservationMask, detectPageImageRects } from './pdfImageMask';
 import { PAPER_PRESETS, type TransformSettings } from './presets';
 
 export type ExportQuality = 'standard' | 'high';
@@ -47,8 +48,8 @@ export async function exportTransformedPdf(
   outDoc.setTitle(`${baseName} (${preset.name})`);
   outDoc.setProducer('Vellum — Eye-Comfort PDF Reader & Transformer');
 
-  const renderScale = quality === 'high' ? 2.0 : 1.5;
-  const jpegQuality = quality === 'high' ? 0.92 : 0.85;
+  const renderScale = quality === 'high' ? 2.25 : 1.75;
+  const jpegQuality = quality === 'high' ? 0.94 : 0.88;
   const totalPages = pdfDoc.numPages;
 
   const canvas = document.createElement('canvas');
@@ -77,6 +78,13 @@ export async function exportTransformedPdf(
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    const imageRectsPromise = detectPageImageRects(
+      page,
+      renderViewport,
+      canvas.width,
+      canvas.height
+    );
+
     await page.render({
       canvas,
       canvasContext: ctx,
@@ -84,7 +92,9 @@ export async function exportTransformedPdf(
     }).promise;
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    transformPageImageData(imageData, exportSettings);
+    const imageRects = await imageRectsPromise;
+    const photoMask = buildPhotoPreservationMask(imageData, imageRects);
+    transformPageImageData(imageData, exportSettings, photoMask);
     ctx.putImageData(imageData, 0, 0);
 
     const jpgBytes = await canvasToJpegBytes(canvas, jpegQuality);

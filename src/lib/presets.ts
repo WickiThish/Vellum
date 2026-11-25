@@ -1,4 +1,4 @@
-export type PresetId = 'kraft' | 'parchment' | 'sepia' | 'slate';
+export type PresetId = 'charcoal' | 'kraft' | 'parchment' | 'sepia';
 
 export interface RGB {
   r: number;
@@ -39,15 +39,33 @@ export interface TransformSettings {
   presetId: PresetId;
   /** Subtle paper fiber texture (0 = off, 1 = strong) */
   grain: number;
-  /** Softens harsh black text toward warm charcoal/espresso (0 to 1) */
+  /** Softens harsh contrast toward comfortable ink tones (0 to 1) */
   inkSoftness: number;
-  /** Preserves hues of embedded photos, charts, and colored highlights */
+  /** Preserves natural colors of embedded photos, charts, and highlights */
   preserveColors: boolean;
   /** Show original untransformed PDF for before/after comparison */
   showOriginal: boolean;
 }
 
 export const PAPER_PRESETS: Record<PresetId, PaperPreset> = {
+  charcoal: {
+    id: 'charcoal',
+    name: 'Charcoal Dark',
+    tagline: 'Dark grey charcoal & crisp off-white ink',
+    isDark: true,
+    paperHex: '#1D1F23',
+    paperRgb: { r: 29, g: 31, b: 35 },
+    inkHex: '#EFECE6',
+    inkRgb: { r: 239, g: 236, b: 230 },
+    deskHex: '#121316',
+    surfaceHex: '#1A1C20',
+    borderHex: '#2E323A',
+    mutedInkHex: '#9FA4AE',
+    accentHex: '#D4A977',
+    accentInkHex: '#151310',
+    defaultGrain: 0,
+    defaultSoftness: 0.15,
+  },
   kraft: {
     id: 'kraft',
     name: 'Kraft Paper',
@@ -102,37 +120,19 @@ export const PAPER_PRESETS: Record<PresetId, PaperPreset> = {
     defaultGrain: 0.35,
     defaultSoftness: 0.35,
   },
-  slate: {
-    id: 'slate',
-    name: 'Dim Slate',
-    tagline: 'Low-glare dark slate & soft warm ink',
-    isDark: true,
-    paperHex: '#1F2227',
-    paperRgb: { r: 31, g: 34, b: 39 },
-    inkHex: '#D8D3CA',
-    inkRgb: { r: 216, g: 211, b: 202 },
-    deskHex: '#14161A',
-    surfaceHex: '#262A30',
-    borderHex: '#363C45',
-    mutedInkHex: '#9A968E',
-    accentHex: '#C9A276',
-    accentInkHex: '#1B1814',
-    defaultGrain: 0.2,
-    defaultSoftness: 0.3,
-  },
 };
 
 export const PRESET_LIST: PaperPreset[] = [
+  PAPER_PRESETS.charcoal,
   PAPER_PRESETS.kraft,
   PAPER_PRESETS.parchment,
   PAPER_PRESETS.sepia,
-  PAPER_PRESETS.slate,
 ];
 
 export const DEFAULT_SETTINGS: TransformSettings = {
-  presetId: 'kraft',
-  grain: PAPER_PRESETS.kraft.defaultGrain,
-  inkSoftness: PAPER_PRESETS.kraft.defaultSoftness,
+  presetId: 'charcoal',
+  grain: PAPER_PRESETS.charcoal.defaultGrain,
+  inkSoftness: PAPER_PRESETS.charcoal.defaultSoftness,
   preserveColors: true,
   showOriginal: false,
 };
