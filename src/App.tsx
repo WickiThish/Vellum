@@ -49,8 +49,6 @@ export default function App() {
   // Avoid overwriting saved lastPage while we're scrolling to the resumed page
   const isResumingRef = useRef<boolean>(false);
 
-  const activePreset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS.charcoal;
-
   const refreshLibrary = useCallback(async () => {
     const books = await listLibraryBooks();
     setLibraryBooks(books);
@@ -315,24 +313,10 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [pdfDoc, exportOpen, focusMode, handleSelectPreset, enterFullscreen, exitFullscreen]);
 
-  // Apply active theme tokens to the document root so scrollbars, selection, and chrome match
+  // Keep app interface strictly monochrome dark grey & white regardless of PDF filter
   useEffect(() => {
-    const root = document.documentElement;
-    root.style.setProperty('--desk', activePreset.deskHex);
-    root.style.setProperty('--surface', activePreset.surfaceHex);
-    root.style.setProperty('--paper', activePreset.paperHex);
-    root.style.setProperty('--ink', activePreset.inkHex);
-    root.style.setProperty('--muted', activePreset.mutedInkHex);
-    root.style.setProperty('--border', activePreset.borderHex);
-    root.style.setProperty('--accent', activePreset.accentHex);
-    root.style.setProperty('--accent-ink', activePreset.accentInkHex);
-    root.style.colorScheme = activePreset.isDark ? 'dark' : 'light';
-
-    const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeMeta) {
-      themeMeta.setAttribute('content', activePreset.surfaceHex);
-    }
-  }, [activePreset]);
+    document.documentElement.style.colorScheme = 'dark';
+  }, []);
 
   const pageNumbers = useMemo(() => {
     if (!pdfDoc) return [];

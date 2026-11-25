@@ -214,7 +214,7 @@ export function LandingView({
             <h2 id="presets-heading" className="section-label">
               Choose your paper stock
             </h2>
-            <span className="section-hint">Click any stock to preview the workspace tone</span>
+            <span className="section-hint">Select the default filter for your PDFs</span>
           </div>
 
           <div className="preset-grid" role="radiogroup" aria-label="Paper presets">
