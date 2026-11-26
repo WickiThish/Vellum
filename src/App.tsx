@@ -35,6 +35,7 @@ function computeInitialScale(): number {
 export default function App() {
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const loadingTaskRef = useRef<PDFDocumentLoadingTask | null>(null);
+  const [originalBytes, setOriginalBytes] = useState<Uint8Array | null>(null);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -161,6 +162,7 @@ export default function App() {
           }));
         }
 
+        setOriginalBytes(bytes.slice());
         setActiveBookId(bookId);
         setFileName(name);
         setResumePage(targetPage);
@@ -269,6 +271,7 @@ export default function App() {
     loadingTaskRef.current?.destroy().catch(() => {});
     loadingTaskRef.current = null;
     setPdfDoc(null);
+    setOriginalBytes(null);
     setActiveBookId(null);
     setFileName('');
     setExportOpen(false);
@@ -403,6 +406,7 @@ export default function App() {
           {exportOpen && (
             <ExportModal
               pdfDoc={pdfDoc}
+              originalBytes={originalBytes}
               fileName={fileName}
               settings={settings}
               onClose={() => setExportOpen(false)}
