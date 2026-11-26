@@ -19,6 +19,7 @@ import {
   DEFAULT_SETTINGS,
   PAPER_PRESETS,
   PRESET_LIST,
+  resolvePresetId,
   type PresetId,
   type TransformSettings,
 } from './lib/presets';
@@ -149,8 +150,7 @@ export default function App() {
         }
 
         if (options?.presetId) {
-          const validPresetId: PresetId =
-            options.presetId in PAPER_PRESETS ? options.presetId : 'charcoal';
+          const validPresetId = resolvePresetId(options.presetId);
           const p = PAPER_PRESETS[validPresetId];
           setSettings((prev) => ({
             ...prev,

@@ -43,7 +43,7 @@ export async function exportTransformedPdf(
   onProgress?: (progress: ExportProgress) => void
 ): Promise<{ bytes: Uint8Array; fileName: string }> {
   const outDoc = await PDFDocument.create();
-  const preset = PAPER_PRESETS[settings.presetId];
+  const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
   const baseName = originalFileName.replace(/\.pdf$/i, '') || 'document';
   outDoc.setTitle(`${baseName} (${preset.name})`);
   outDoc.setProducer('Vellum — Eye-Comfort PDF Reader & Transformer');

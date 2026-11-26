@@ -59,14 +59,14 @@ export function LandingView({
             <span>Vellum</span>
           </div>
           <h1 className="landing-title">
-            Read PDFs in calm charcoal or warm paper,
+            Read PDFs comfortably for hours,
             <br />
-            not blinding white screens.
+            without harsh white glare.
           </h1>
           <p className="landing-subtitle">
-            Transform harsh white PDFs into crystal-clear Charcoal Dark mode (without inverting
-            images), Kraft brown paper, warm parchment, or soft sepia. Read live or export a new
-            PDF.
+            Transform stark white PDFs into crystal-clear True Dark, anti-halation Soft Graphite,
+            matte E-Ink Grey, or calm Soft Sage — keeping embedded photos un-inverted and layouts
+            100% intact. Read live or export a new PDF.
           </p>
         </header>
 
@@ -143,7 +143,7 @@ export function LandingView({
 
             <div className="library-grid">
               {libraryBooks.map((book) => {
-                const bookPreset = PAPER_PRESETS[book.presetId] ?? PAPER_PRESETS.charcoal;
+                const bookPreset = PAPER_PRESETS[book.presetId] ?? PAPER_PRESETS['true-dark'];
                 const displayTitle = book.name.replace(/\.pdf$/i, '');
                 const progressPct = Math.min(
                   100,
@@ -212,7 +212,7 @@ export function LandingView({
         <section className="preset-showcase" aria-labelledby="presets-heading">
           <div className="preset-showcase-header">
             <h2 id="presets-heading" className="section-label">
-              Choose your paper stock
+              Reading modes
             </h2>
             <span className="section-hint">Select the default filter for your PDFs</span>
           </div>

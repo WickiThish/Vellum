@@ -1,7 +1,7 @@
 {
   "name": "Vellum — Eye-Comfort PDF Reader",
   "short_name": "Vellum",
-  "description": "Transform harsh white PDFs into warm Kraft paper, parchment, sepia, or dim slate locally in your browser.",
+  "description": "Transform harsh white PDFs into crystal-clear True Dark, Soft Graphite, E-Ink Grey, or Soft Sage locally in your browser.",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#090909",

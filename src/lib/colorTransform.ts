@@ -33,7 +33,7 @@ export function transformPageImageData(
     return imageData;
   }
 
-  const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS.charcoal;
+  const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
   const { data, width, height } = imageData;
 
   const paperR = preset.paperRgb.r;

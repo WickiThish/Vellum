@@ -208,7 +208,7 @@ export function PdfPageCanvas({
     ctx.putImageData(copy, 0, 0);
   }, [settings, isRendered]);
 
-  const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS.charcoal;
+  const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
   const sheetBg = settings.showOriginal ? '#ffffff' : preset.paperHex;
 
   return (

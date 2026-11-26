@@ -22,7 +22,7 @@ export function ExportModal({ pdfDoc, fileName, settings, onClose }: ExportModal
   const [doneFileName, setDoneFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const preset = PAPER_PRESETS[settings.presetId];
+  const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
   const isExporting = progress !== null && !doneFileName;
 
   async function handleExport() {
