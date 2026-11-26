@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import { transformPageImageData } from '../lib/colorTransform';
 import { buildPhotoPreservationMask, detectPageImageRects } from '../lib/pdfImageMask';
+import { pdfjsLib } from '../lib/pdfjsSetup';
 import { PAPER_PRESETS, type TransformSettings } from '../lib/presets';
 
 interface PdfPageCanvasProps {
@@ -10,6 +11,8 @@ interface PdfPageCanvasProps {
   initialPage?: number;
   scale: number;
   settings: TransformSettings;
+  /** When true, pdfDoc is already True Vector recolored — render directly at full vector crispness */
+  isVectorRecolored?: boolean;
   onVisible?: (pageNumber: number) => void;
 }
 
@@ -19,11 +22,14 @@ export function PdfPageCanvas({
   initialPage = 1,
   scale,
   settings,
+  isVectorRecolored = false,
   onVisible,
 }: PdfPageCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textLayerRef = useRef<HTMLDivElement | null>(null);
   const rawImageCacheRef = useRef<{
+    pdfDoc: PDFDocumentProxy;
     scale: number;
     dpr: number;
     width: number;
@@ -72,19 +78,20 @@ export function PdfPageCanvas({
     };
   }, [pageNumber, onVisible]);
 
-  // Step 1: Rasterize PDF page via PDF.js only when doc, pageNumber, scale, or visibility changes
+  // Step 1: Render vector PDF page + aligned selectable TextLayer
   useEffect(() => {
     if (!isNearViewport) return;
 
     let cancelled = false;
     let renderTask: RenderTask | null = null;
+    let activeTextLayer: InstanceType<typeof pdfjsLib.TextLayer> | null = null;
 
-    async function renderBasePage() {
+    async function renderPage() {
       const page = await pdfDoc.getPage(pageNumber);
       if (cancelled) return;
 
-      // Super-sample at least 1.75x (up to 2.5x on HiDPI) so text stays crystal clear on all screens
-      const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 1.75), 2.5);
+      // High-density vector rendering (2x–3x) so zoomed text stays razor-sharp
+      const dpr = Math.min(Math.max(window.devicePixelRatio || 1, 2), 3);
       const viewport = page.getViewport({ scale });
       const hiDpiViewport = page.getViewport({ scale: scale * dpr });
 
@@ -98,31 +105,45 @@ export function PdfPageCanvas({
       const pixelW = Math.ceil(hiDpiViewport.width);
       const pixelH = Math.ceil(hiDpiViewport.height);
 
-      // Reuse cached raw pixels + image mask if scale & dpr haven't changed
+      // If we're using pixel-transform fallback and already cached this exact pdfDoc/scale, reuse cache
       const cached = rawImageCacheRef.current;
       if (
+        !isVectorRecolored &&
         cached &&
+        cached.pdfDoc === pdfDoc &&
         cached.scale === scale &&
         cached.dpr === dpr &&
         cached.width === pixelW &&
         cached.height === pixelH
       ) {
-        applyTransformFromCache();
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (ctx) {
+          const copy = new ImageData(
+            new Uint8ClampedArray(cached.data),
+            cached.width,
+            cached.height
+          );
+          transformPageImageData(copy, settings, cached.photoMask);
+          ctx.putImageData(copy, 0, 0);
+          setIsRendered(true);
+        }
         return;
       }
 
       canvas.width = pixelW;
       canvas.height = pixelH;
 
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const ctx = canvas.getContext('2d', { willReadFrequently: !isVectorRecolored });
       if (!ctx) return;
 
-      // Paint pure white base so transparent PDFs map cleanly to paper/charcoal tone
-      ctx.fillStyle = '#ffffff';
+      const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
+      ctx.fillStyle = isVectorRecolored && !settings.showOriginal ? preset.paperHex : '#ffffff';
       ctx.fillRect(0, 0, pixelW, pixelH);
 
-      // Detect embedded raster photos/images in parallel with rasterization
-      const imageRectsPromise = detectPageImageRects(page, hiDpiViewport, pixelW, pixelH);
+      const imageRectsPromise =
+        !isVectorRecolored && !settings.showOriginal
+          ? detectPageImageRects(page, hiDpiViewport, pixelW, pixelH)
+          : Promise.resolve([]);
 
       renderTask = page.render({
         canvas,
@@ -141,43 +162,49 @@ export function PdfPageCanvas({
 
       if (cancelled) return;
 
-      const raw = ctx.getImageData(0, 0, pixelW, pixelH);
-      const imageRects = await imageRectsPromise;
-      if (cancelled) return;
+      // Pixel transform only needed when NOT already vector-recolored (e.g. fallback mode)
+      if (!isVectorRecolored && !settings.showOriginal) {
+        const raw = ctx.getImageData(0, 0, pixelW, pixelH);
+        const imageRects = await imageRectsPromise;
+        if (cancelled) return;
 
-      const photoMask = buildPhotoPreservationMask(raw, imageRects);
+        const photoMask = buildPhotoPreservationMask(raw, imageRects);
+        rawImageCacheRef.current = {
+          pdfDoc,
+          scale,
+          dpr,
+          width: pixelW,
+          height: pixelH,
+          data: new Uint8ClampedArray(raw.data),
+          photoMask,
+        };
 
-      rawImageCacheRef.current = {
-        scale,
-        dpr,
-        width: pixelW,
-        height: pixelH,
-        data: new Uint8ClampedArray(raw.data),
-        photoMask,
-      };
+        const transformed = transformPageImageData(raw, settings, photoMask);
+        ctx.putImageData(transformed, 0, 0);
+      } else {
+        rawImageCacheRef.current = null;
+      }
 
-      const transformed = transformPageImageData(raw, settings, photoMask);
-      ctx.putImageData(transformed, 0, 0);
       setIsRendered(true);
+
+      // Render native selectable/copyable PDF.js TextLayer aligned 1:1 over the vector canvas
+      const textLayerDiv = textLayerRef.current;
+      if (textLayerDiv && !cancelled) {
+        textLayerDiv.replaceChildren();
+        textLayerDiv.style.setProperty('--scale-factor', String(viewport.scale));
+        const textContent = await page.getTextContent();
+        if (cancelled) return;
+
+        activeTextLayer = new pdfjsLib.TextLayer({
+          textContentSource: textContent,
+          container: textLayerDiv,
+          viewport,
+        });
+        await activeTextLayer.render().catch(() => {});
+      }
     }
 
-    function applyTransformFromCache() {
-      const cached = rawImageCacheRef.current;
-      const canvas = canvasRef.current;
-      if (!cached || !canvas) return;
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) return;
-      const copy = new ImageData(
-        new Uint8ClampedArray(cached.data),
-        cached.width,
-        cached.height
-      );
-      transformPageImageData(copy, settings, cached.photoMask);
-      ctx.putImageData(copy, 0, 0);
-      setIsRendered(true);
-    }
-
-    renderBasePage().catch((err) => {
+    renderPage().catch((err) => {
       if (!cancelled) {
         console.error(`Failed to render page ${pageNumber}:`, err);
       }
@@ -186,15 +213,17 @@ export function PdfPageCanvas({
     return () => {
       cancelled = true;
       renderTask?.cancel();
+      activeTextLayer?.cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdfDoc, pageNumber, scale, isNearViewport]);
+  }, [pdfDoc, pageNumber, scale, isNearViewport, isVectorRecolored, settings.showOriginal]);
 
-  // Step 2: Instantly re-apply color/ink/grain transform when settings change (no PDF re-rasterization!)
+  // Step 2: Re-apply pixel transform immediately when using fallback mode
   useEffect(() => {
+    if (isVectorRecolored) return;
     const cached = rawImageCacheRef.current;
     const canvas = canvasRef.current;
-    if (!cached || !canvas || !isRendered) return;
+    if (!cached || cached.pdfDoc !== pdfDoc || !canvas || !isRendered) return;
 
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
@@ -206,7 +235,7 @@ export function PdfPageCanvas({
     );
     transformPageImageData(copy, settings, cached.photoMask);
     ctx.putImageData(copy, 0, 0);
-  }, [settings, isRendered]);
+  }, [pdfDoc, settings, isRendered, isVectorRecolored]);
 
   const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
   const sheetBg = settings.showOriginal ? '#ffffff' : preset.paperHex;
@@ -230,13 +259,23 @@ export function PdfPageCanvas({
             opacity: isRendered ? 1 : 0,
           }}
         />
+        <div
+          ref={textLayerRef}
+          className="textLayer vellum-text-layer"
+          style={{
+            width: `${dimensions.width}px`,
+            height: `${dimensions.height}px`,
+          }}
+        />
         {!isRendered && (
           <div className="vellum-page-skeleton" aria-label={`Loading page ${pageNumber}`}>
             <span>Rendering page {pageNumber}…</span>
           </div>
         )}
+        <span className="vellum-page-badge" aria-hidden="true">
+          {pageNumber}
+        </span>
       </div>
-      <figcaption className="vellum-page-caption">Page {pageNumber}</figcaption>
     </figure>
   );
 }

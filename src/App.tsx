@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Minimize2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import { ExportModal } from './components/ExportModal';
 import { LandingView } from './components/LandingView';
@@ -24,6 +24,10 @@ import {
   type TransformSettings,
 } from './lib/presets';
 import { generateSamplePdf } from './lib/samplePdf';
+import { exportVectorPdf } from './lib/vectorPdfExporter';
+
+const MIN_SCALE = 0.55;
+const MAX_SCALE = 3.0;
 
 function detectDefaultViewMode(): ViewMode {
   if (typeof window === 'undefined') return 'scroll';
@@ -34,14 +38,20 @@ function detectDefaultViewMode(): ViewMode {
 function computeFitScale(pagePointWidth: number): number {
   if (typeof window === 'undefined') return 1.15;
   const horizontalPad = window.innerWidth <= 640 ? 20 : 48;
-  const maxWidth = window.innerWidth <= 1024 ? window.innerWidth - horizontalPad : Math.min(window.innerWidth - horizontalPad, 920);
+  const maxWidth =
+    window.innerWidth <= 1024
+      ? window.innerWidth - horizontalPad
+      : Math.min(window.innerWidth - horizontalPad, 920);
   const fit = maxWidth / Math.max(200, pagePointWidth);
-  return Math.max(0.55, Math.min(1.6, +fit.toFixed(2)));
+  return Math.max(MIN_SCALE, Math.min(1.6, +fit.toFixed(2)));
 }
 
 export default function App() {
-  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
-  const loadingTaskRef = useRef<PDFDocumentLoadingTask | null>(null);
+  const [originalPdfDoc, setOriginalPdfDoc] = useState<PDFDocumentProxy | null>(null);
+  const [vectorPdfDoc, setVectorPdfDoc] = useState<PDFDocumentProxy | null>(null);
+  const originalTaskRef = useRef<PDFDocumentLoadingTask | null>(null);
+  const vectorTaskRef = useRef<PDFDocumentLoadingTask | null>(null);
+
   const [originalBytes, setOriginalBytes] = useState<Uint8Array | null>(null);
   const [activeBookId, setActiveBookId] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
@@ -62,6 +72,11 @@ export default function App() {
   // Touch swipe tracking for tablet/phone single-page mode
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
 
+  const activePdfDoc = settings.showOriginal
+    ? originalPdfDoc
+    : (vectorPdfDoc ?? originalPdfDoc);
+  const usingVectorDoc = !settings.showOriginal && vectorPdfDoc !== null;
+
   const refreshLibrary = useCallback(async () => {
     const books = await listLibraryBooks();
     setLibraryBooks(books);
@@ -77,9 +92,58 @@ export default function App() {
     };
   }, []);
 
+  // Build True Vector recolored PDF in-memory whenever the document or reading settings change
+  useEffect(() => {
+    if (!originalBytes || settings.showOriginal) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const { bytes: recoloredBytes } = await exportVectorPdf(
+          originalBytes,
+          settings,
+          fileName || 'document.pdf'
+        );
+        if (cancelled) return;
+
+        const nextTask = pdfjsLib.getDocument({ data: recoloredBytes });
+        const nextDoc = await nextTask.promise;
+        if (cancelled) {
+          nextTask.destroy().catch(() => {});
+          return;
+        }
+
+        const prevTask = vectorTaskRef.current;
+        vectorTaskRef.current = nextTask;
+        setVectorPdfDoc(nextDoc);
+        // Destroy previous vector worker slightly after React swaps to the new doc
+        setTimeout(() => prevTask?.destroy().catch(() => {}), 300);
+      } catch (err) {
+        // Gracefully fall back to pixel transform on originalPdfDoc if a PDF cannot be vector-rewritten
+        console.warn('Vector live recolor fallback:', err);
+        if (!cancelled) {
+          setVectorPdfDoc(null);
+        }
+      }
+    }, 90);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    originalBytes,
+    fileName,
+    settings.presetId,
+    settings.inkSoftness,
+    settings.preserveColors,
+    settings.showOriginal,
+    settings,
+  ]);
+
   // Re-fit page width smoothly when rotating a tablet or resizing the window
   useEffect(() => {
-    if (!pdfDoc) return;
+    if (!originalPdfDoc) return;
     let timeoutId: number | undefined;
     function onResize() {
       window.clearTimeout(timeoutId);
@@ -94,7 +158,20 @@ export default function App() {
       window.clearTimeout(timeoutId);
       window.removeEventListener('resize', onResize);
     };
-  }, [pdfDoc, basePageWidth]);
+  }, [originalPdfDoc, basePageWidth]);
+
+  // Ctrl + Mouse Wheel smooth zoom (works in both normal & Full Screen modes)
+  useEffect(() => {
+    if (!originalPdfDoc) return;
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.12 : -0.12;
+      setScale((s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, +(s + delta).toFixed(2))));
+    }
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => window.removeEventListener('wheel', onWheel);
+  }, [originalPdfDoc]);
 
   const enterFullscreen = useCallback(() => {
     setFocusMode(true);
@@ -142,8 +219,8 @@ export default function App() {
 
   const goToPage = useCallback(
     (nextPage: number) => {
-      if (!pdfDoc) return;
-      const clamped = Math.min(Math.max(1, nextPage), pdfDoc.numPages);
+      if (!originalPdfDoc) return;
+      const clamped = Math.min(Math.max(1, nextPage), originalPdfDoc.numPages);
       setCurrentPage(clamped);
       setResumePage(clamped);
       if (activeBookId) {
@@ -155,7 +232,7 @@ export default function App() {
         window.scrollTo({ top: 0 });
       }
     },
-    [pdfDoc, activeBookId, viewMode, scrollToPage]
+    [originalPdfDoc, activeBookId, viewMode, scrollToPage]
   );
 
   const handleToggleViewMode = useCallback(() => {
@@ -183,10 +260,12 @@ export default function App() {
         const loadingTask = pdfjsLib.getDocument({ data: workerBytes });
         const doc = await loadingTask.promise;
 
-        loadingTaskRef.current?.destroy().catch(() => {});
-        loadingTaskRef.current = loadingTask;
+        originalTaskRef.current?.destroy().catch(() => {});
+        originalTaskRef.current = loadingTask;
+        vectorTaskRef.current?.destroy().catch(() => {});
+        vectorTaskRef.current = null;
+        setVectorPdfDoc(null);
 
-        // Inspect page 1 true point width so landscape slides & textbooks fit cleanly
         const firstPage = await doc.getPage(1);
         const firstViewport = firstPage.getViewport({ scale: 1 });
         setBasePageWidth(firstViewport.width);
@@ -229,7 +308,7 @@ export default function App() {
         setFileName(name);
         setResumePage(targetPage);
         setCurrentPage(targetPage);
-        setPdfDoc(doc);
+        setOriginalPdfDoc(doc);
         setFocusMode(false);
         if (viewMode === 'scroll') {
           scrollToPage(targetPage);
@@ -334,9 +413,12 @@ export default function App() {
 
   const handleGoHome = useCallback(() => {
     exitFullscreen();
-    loadingTaskRef.current?.destroy().catch(() => {});
-    loadingTaskRef.current = null;
-    setPdfDoc(null);
+    originalTaskRef.current?.destroy().catch(() => {});
+    originalTaskRef.current = null;
+    vectorTaskRef.current?.destroy().catch(() => {});
+    vectorTaskRef.current = null;
+    setOriginalPdfDoc(null);
+    setVectorPdfDoc(null);
     setOriginalBytes(null);
     setActiveBookId(null);
     setFileName('');
@@ -347,7 +429,7 @@ export default function App() {
 
   // Keyboard shortcuts when reading a PDF
   useEffect(() => {
-    if (!pdfDoc) return;
+    if (!originalPdfDoc) return;
 
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
@@ -374,9 +456,9 @@ export default function App() {
       } else if (e.key.toLowerCase() === 'v') {
         handleToggleViewMode();
       } else if (e.key === '+' || e.key === '=') {
-        setScale((s) => Math.min(2.4, +(s + 0.15).toFixed(2)));
+        setScale((s) => Math.min(MAX_SCALE, +(s + 0.15).toFixed(2)));
       } else if (e.key === '-') {
-        setScale((s) => Math.max(0.55, +(s - 0.15).toFixed(2)));
+        setScale((s) => Math.max(MIN_SCALE, +(s - 0.15).toFixed(2)));
       } else if (viewMode === 'paged' && (e.key === 'ArrowRight' || e.key === 'PageDown')) {
         e.preventDefault();
         goToPage(currentPage + 1);
@@ -389,7 +471,7 @@ export default function App() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
-    pdfDoc,
+    originalPdfDoc,
     exportOpen,
     focusMode,
     viewMode,
@@ -401,16 +483,15 @@ export default function App() {
     exitFullscreen,
   ]);
 
-  // Keep app interface strictly monochrome dark grey & white regardless of PDF filter
   useEffect(() => {
     document.documentElement.style.colorScheme = 'dark';
   }, []);
 
   const pageNumbers = useMemo(() => {
-    if (!pdfDoc) return [];
+    if (!activePdfDoc) return [];
     if (viewMode === 'paged') return [currentPage];
-    return Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
-  }, [pdfDoc, viewMode, currentPage]);
+    return Array.from({ length: activePdfDoc.numPages }, (_, i) => i + 1);
+  }, [activePdfDoc, viewMode, currentPage]);
 
   function handleTouchStart(e: React.TouchEvent) {
     if (viewMode !== 'paged' || e.touches.length !== 1) return;
@@ -427,7 +508,6 @@ export default function App() {
     const dy = t.clientY - start.y;
     const elapsed = Date.now() - start.time;
 
-    // Require clear horizontal swipe (not vertical scroll)
     if (elapsed < 600 && Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.6) {
       if (dx < 0) goToPage(currentPage + 1);
       else goToPage(currentPage - 1);
@@ -438,16 +518,16 @@ export default function App() {
     <div
       className="vellum-app"
       onDragOver={(e) => {
-        if (pdfDoc) e.preventDefault();
+        if (activePdfDoc) e.preventDefault();
       }}
       onDrop={(e) => {
-        if (!pdfDoc) return;
+        if (!activePdfDoc) return;
         e.preventDefault();
         const file = e.dataTransfer.files?.[0];
         if (file) handleFileSelected(file);
       }}
     >
-      {!pdfDoc ? (
+      {!activePdfDoc ? (
         <LandingView
           activePreset={settings.presetId}
           libraryBooks={libraryBooks}
@@ -465,13 +545,13 @@ export default function App() {
             <ReaderToolbar
               fileName={fileName}
               currentPage={currentPage}
-              totalPages={pdfDoc.numPages}
+              totalPages={activePdfDoc.numPages}
               scale={scale}
               viewMode={viewMode}
               settings={settings}
               onSelectPreset={handleSelectPreset}
               onUpdateSettings={handleUpdateSettings}
-              onZoomChange={setScale}
+              onZoomChange={(next) => setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, next)))}
               onFitWidth={() => setScale(computeFitScale(basePageWidth))}
               onJumpToPage={goToPage}
               onToggleViewMode={handleToggleViewMode}
@@ -483,15 +563,44 @@ export default function App() {
           )}
 
           {focusMode && (
-            <button
-              type="button"
-              className="focus-exit-pill"
-              onClick={exitFullscreen}
-              title="Exit Full Screen (Esc or F)"
-            >
-              <Minimize2 size={15} aria-hidden="true" />
-              <span>Exit Full Screen</span>
-            </button>
+            <div className="focus-floating-bar" role="toolbar" aria-label="Full screen controls">
+              <button
+                type="button"
+                className="focus-bar-btn"
+                onClick={() => setScale((s) => Math.max(MIN_SCALE, +(s - 0.15).toFixed(2)))}
+                title="Zoom out (-)"
+                aria-label="Zoom out"
+              >
+                <ZoomOut size={15} />
+              </button>
+              <button
+                type="button"
+                className="focus-bar-zoom"
+                onClick={() => setScale(computeFitScale(basePageWidth))}
+                title="Reset to Fit Width"
+              >
+                {Math.round(scale * 100)}%
+              </button>
+              <button
+                type="button"
+                className="focus-bar-btn"
+                onClick={() => setScale((s) => Math.min(MAX_SCALE, +(s + 0.15).toFixed(2)))}
+                title="Zoom in (+)"
+                aria-label="Zoom in"
+              >
+                <ZoomIn size={15} />
+              </button>
+              <span className="focus-bar-divider" aria-hidden="true" />
+              <button
+                type="button"
+                className="focus-bar-exit"
+                onClick={exitFullscreen}
+                title="Exit Full Screen (Esc or F)"
+              >
+                <Minimize2 size={15} aria-hidden="true" />
+                <span>Exit</span>
+              </button>
+            </div>
           )}
 
           {settings.showOriginal && !focusMode && (
@@ -511,11 +620,12 @@ export default function App() {
             {pageNumbers.map((pageNum) => (
               <PdfPageCanvas
                 key={`${activeBookId ?? fileName}-${pageNum}`}
-                pdfDoc={pdfDoc}
+                pdfDoc={activePdfDoc}
                 pageNumber={pageNum}
                 initialPage={viewMode === 'paged' ? currentPage : resumePage}
                 scale={scale}
                 settings={settings}
+                isVectorRecolored={usingVectorDoc}
                 onVisible={handlePageVisible}
               />
             ))}
@@ -534,12 +644,12 @@ export default function App() {
                 <span>Prev</span>
               </button>
               <span className="paged-nav-status">
-                Page {currentPage} of {pdfDoc.numPages}
+                Page {currentPage} of {activePdfDoc.numPages}
               </span>
               <button
                 type="button"
                 className="paged-nav-btn"
-                disabled={currentPage >= pdfDoc.numPages}
+                disabled={currentPage >= activePdfDoc.numPages}
                 onClick={() => goToPage(currentPage + 1)}
                 aria-label="Next page"
               >
@@ -549,9 +659,9 @@ export default function App() {
             </nav>
           )}
 
-          {exportOpen && (
+          {exportOpen && originalPdfDoc && (
             <ExportModal
-              pdfDoc={pdfDoc}
+              pdfDoc={originalPdfDoc}
               originalBytes={originalBytes}
               fileName={fileName}
               settings={settings}

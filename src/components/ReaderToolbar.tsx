@@ -184,7 +184,7 @@ export function ReaderToolbar({
           <button
             type="button"
             className="icon-btn"
-            onClick={() => onZoomChange(Math.min(2.4, +(scale + 0.15).toFixed(2)))}
+            onClick={() => onZoomChange(Math.min(3.0, +(scale + 0.15).toFixed(2)))}
             title="Zoom in (+)"
             aria-label="Zoom in"
           >
