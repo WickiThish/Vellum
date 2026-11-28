@@ -484,8 +484,13 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    document.documentElement.style.colorScheme = 'dark';
-  }, []);
+    const root = document.documentElement;
+    root.style.colorScheme = 'dark';
+    root.style.setProperty(
+      '--desk',
+      settings.presetId === 'oled-black' ? '#000000' : '#090909'
+    );
+  }, [settings.presetId]);
 
   const pageNumbers = useMemo(() => {
     if (!activePdfDoc) return [];

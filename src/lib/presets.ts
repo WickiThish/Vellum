@@ -1,4 +1,4 @@
-export type PresetId = 'true-dark' | 'graphite' | 'eink' | 'sage';
+export type PresetId = 'true-dark' | 'graphite' | 'eink' | 'sage' | 'oled-black';
 
 export interface RGB {
   r: number;
@@ -90,6 +90,19 @@ export const PAPER_PRESETS: Record<PresetId, PaperPreset> = {
     defaultGrain: 0,
     defaultSoftness: 0.08,
   },
+  'oled-black': {
+    id: 'oled-black',
+    name: 'OLED Black',
+    tagline: 'Pure #000000 pixels-off black & soft #D4D4D4 ink',
+    isDark: true,
+    paperHex: '#000000',
+    paperRgb: { r: 0, g: 0, b: 0 },
+    inkHex: '#D4D4D4',
+    inkRgb: { r: 212, g: 212, b: 212 },
+    borderHex: '#242424',
+    defaultGrain: 0,
+    defaultSoftness: 0,
+  },
 };
 
 export const PRESET_LIST: PaperPreset[] = [
@@ -97,6 +110,7 @@ export const PRESET_LIST: PaperPreset[] = [
   PAPER_PRESETS.graphite,
   PAPER_PRESETS.eink,
   PAPER_PRESETS.sage,
+  PAPER_PRESETS['oled-black'],
 ];
 
 export const DEFAULT_SETTINGS: TransformSettings = {
