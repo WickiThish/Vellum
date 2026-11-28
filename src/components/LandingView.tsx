@@ -65,8 +65,8 @@ export function LandingView({
           </h1>
           <p className="landing-subtitle">
             Transform stark white PDFs into crystal-clear True Dark, anti-halation Soft Graphite,
-            matte E-Ink Grey, or calm Soft Sage — keeping embedded photos un-inverted and layouts
-            100% intact. Read live or export a new PDF.
+            matte E-Ink Grey, Soft Sage, or OLED Black while keeping embedded photos un-inverted
+            and layouts 100% intact. Read live or export a new PDF.
           </p>
         </header>
 
@@ -137,7 +137,7 @@ export function LandingView({
                 Your Library · Continue Reading
               </h2>
               <span className="section-hint">
-                Saved locally in this browser — resumes right where you left off
+                Saved locally in this browser. Resumes right where you left off.
               </span>
             </div>
 

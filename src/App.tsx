@@ -610,7 +610,7 @@ export default function App() {
 
           {settings.showOriginal && !focusMode && (
             <div className="compare-banner" role="status">
-              Viewing <strong>Original White PDF</strong> — press <kbd>O</kbd> or pick a reading
+              Viewing <strong>Original White PDF</strong>. Press <kbd>O</kbd> or pick a reading
               mode to restore comfort view.
             </div>
           )}

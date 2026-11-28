@@ -89,7 +89,7 @@ export async function generateSamplePdf(): Promise<Uint8Array> {
   let y = pageHeight - 188;
 
   const p1Paras = [
-    'Most PDF documents were designed to be printed on physical paper — not projected directly into your eyes from a backlit LED display. On paper, ambient light bounces gently off textured fibers. On a screen, pure white (#FFFFFF) margins act like a tiny lightbox surrounding every paragraph.',
+    'Most PDF documents were designed to be printed on physical paper, not projected directly into your eyes from a backlit LED display. On paper, ambient light bounces gently off textured fibers. On a screen, pure white (#FFFFFF) margins act like a tiny lightbox surrounding every paragraph.',
     'Even when you enable a system blue-light filter, the fundamental problem remains: vast expanses of high-luminance white space paired with maximum-contrast pure black (#000000) glyphs. Over an hour or two of studying textbooks, research papers, or legal drafts, this harsh contrast creates visual fatigue and halation.',
     'Traditional bookmakers understood this centuries ago. Unbleached kraft stock, warm cotton rag, and aged vellum naturally soften the contrast ratio while giving the eye a calm, matte resting surface. Dark espresso or charcoal ink remains effortlessly legible without stinging the retina.',
   ];
@@ -215,7 +215,7 @@ export async function generateSamplePdf(): Promise<Uint8Array> {
   const p2Paras = [
     'Everything in Vellum happens directly inside your web browser. Your PDFs are never uploaded to any server, making it safe for private research notes, financial statements, textbooks, and manuscripts.',
     'Rather than slapping a muddy brown filter over the entire document, Vellum maps each pixel by luminance: pure white page backgrounds smoothly become warm Kraft, Parchment, Sepia, or Dim Slate surfaces, while stark black ink softens into deep espresso or charcoal.',
-    'When Preserve Colors is enabled, colored charts, syntax-highlighted code, links, and embedded photographs keep their natural hues while harmonizing with the chosen paper stock — just as if they were printed onto tactile brown paper.',
+    'When Preserve Colors is enabled, colored charts, syntax-highlighted code, links, and embedded photographs keep their natural hues while harmonizing with the chosen reading mode.',
     'Once you find a comfortable combination of paper tone, ink softness, and fiber grain, you can either keep reading right here in Focus Mode (press F) or export a brand-new PDF to read on your tablet, e-reader, or laptop.',
   ];
 
@@ -234,10 +234,10 @@ export async function generateSamplePdf(): Promise<Uint8Array> {
   y2 -= 24;
 
   const shortcuts = [
-    '1, 2, 3, 4   —   Switch between Kraft Paper, Warm Parchment, Soft Sepia, and Dim Slate',
-    'O            —   Toggle Original white PDF to compare eye comfort',
-    'F            —   Toggle distraction-free Focus Mode',
-    '+ / -        —   Zoom in and out comfortably',
+    '1 to 5   :   Switch between True Dark, Soft Graphite, E-Ink Grey, Soft Sage, and OLED Black',
+    'O        :   Toggle Original white PDF to compare eye comfort',
+    'F        :   Toggle Full-Screen reading mode',
+    '+ / -    :   Zoom in and out comfortably',
   ];
 
   for (const line of shortcuts) {

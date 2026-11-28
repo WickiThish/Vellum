@@ -174,7 +174,7 @@ export function ExportModal({
                 onChange={() => setMode('image-standard')}
               />
               <div>
-                <div className="quality-title">Visual Snapshot — Balanced</div>
+                <div className="quality-title">Visual Snapshot (Balanced)</div>
                 <div className="quality-sub">
                   Best for scanned books or slides where vector recoloring looks uneven
                 </div>
@@ -189,7 +189,7 @@ export function ExportModal({
                 onChange={() => setMode('image-high')}
               />
               <div>
-                <div className="quality-title">Visual Snapshot — High Detail (2.25×)</div>
+                <div className="quality-title">Visual Snapshot (High Detail, 2.25×)</div>
                 <div className="quality-sub">
                   Maximum image sharpness for scanned dense equations & diagrams
                 </div>

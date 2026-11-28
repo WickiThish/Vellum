@@ -46,7 +46,7 @@ export async function exportTransformedPdf(
   const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
   const baseName = originalFileName.replace(/\.pdf$/i, '') || 'document';
   outDoc.setTitle(`${baseName} (${preset.name})`);
-  outDoc.setProducer('Vellum — Eye-Comfort PDF Reader & Transformer');
+  outDoc.setProducer('Vellum Eye-Comfort PDF Reader');
 
   const renderScale = quality === 'high' ? 2.25 : 1.75;
   const jpegQuality = quality === 'high' ? 0.94 : 0.88;

@@ -514,7 +514,7 @@ export async function exportVectorPdf(
   const preset = PAPER_PRESETS[settings.presetId] ?? PAPER_PRESETS['true-dark'];
   const baseName = originalFileName.replace(/\.pdf$/i, '') || 'document';
   pdfDoc.setTitle(`${baseName} (${preset.name})`);
-  pdfDoc.setProducer('Vellum — True Vector PDF Transformer');
+  pdfDoc.setProducer('Vellum True Vector PDF Transformer');
 
   const bgR = fmtNum(preset.paperRgb.r / 255);
   const bgG = fmtNum(preset.paperRgb.g / 255);
